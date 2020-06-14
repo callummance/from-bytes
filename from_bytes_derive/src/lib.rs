@@ -104,8 +104,8 @@ fn calculate_field_offsets(ast: &syn::DeriveInput) -> Vec<StructField> {
                             let meta = attr.parse_meta().unwrap();
                             if let syn::Meta::NameValue(val) = meta {
                                 if let syn::Lit::Int(offset_lit) = val.lit {
-                                    let size: usize = offset_lit.base10_parse().unwrap();
-                                    field_offset_expr = quote! {#size};
+                                    let offset: usize = offset_lit.base10_parse().unwrap();
+                                    field_offset_expr = quote! {#offset};
                                 }
                             }
                         }
