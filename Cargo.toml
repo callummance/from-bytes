@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "from_bytes",
+	"from_bytes_derive"
+]
