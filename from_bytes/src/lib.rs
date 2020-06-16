@@ -58,6 +58,7 @@ derive_frombytes_num!(f32);
 derive_frombytes_num!(f64);
 
 // Implementation for byte arrays
+#[derive(Clone, Debug, Default)]
 pub struct BytesArray {
     pub bytes: Vec<u8>,
     pub len: usize,
@@ -82,6 +83,7 @@ impl FromBytes for BytesArray {
 }
 
 // Implementation for strings
+#[derive(Clone, Debug, Default)]
 pub struct InlineCString {
     pub contents: String,
     pub len: usize,
@@ -100,5 +102,11 @@ impl FromBytes for InlineCString {
 
     fn bytes_size(&self) -> usize {
         return self.len;
+    }
+}
+
+impl From<InlineCString> for String {
+    fn from(in_str: InlineCString) -> Self {
+        in_str.contents
     }
 }
