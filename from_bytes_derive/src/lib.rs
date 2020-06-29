@@ -52,7 +52,7 @@ fn impl_bytes_read(fields: &Vec<StructField>) -> proc_macro2::TokenStream {
             let mut start_idx: usize;
             let mut end_idx: usize;
             if bytes.len() < self.bytes_size() {
-                return Err(from_bytes::ReadFromBytesError::BytesArrayTooSmall);
+                return Err(from_bytes::ReadFromBytesError::BytesArrayTooSmall(self.bytes_size(), bytes.len()));
             } else {
                 #(#read_field_impls)*
                 Ok(())

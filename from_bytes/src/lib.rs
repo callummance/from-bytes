@@ -11,7 +11,7 @@ pub type ReadFromBytesResult<T> = Result<T, ReadFromBytesError>;
 
 #[derive(Debug, Clone)]
 pub enum ReadFromBytesError {
-    BytesArrayTooSmall,
+    BytesArrayTooSmall(usize, usize),
     BytesFormatError(String),
 }
 
@@ -21,14 +21,15 @@ macro_rules! derive_frombytes_num {
         impl FromBytes for $int_type {
             fn load_from_bytes(&mut self, bytes: &[u8]) -> ReadFromBytesResult<()> {
                 if bytes.len() < self.bytes_size() {
-                    return Err(ReadFromBytesError::BytesArrayTooSmall);
+                    return Err(ReadFromBytesError::BytesArrayTooSmall(
+                        self.bytes_size(),
+                        bytes.len(),
+                    ));
                 } else {
                     let (int_bytes, _) = bytes.split_at(std::mem::size_of::<$int_type>());
-                    *self = $int_type::from_ne_bytes(
-                        int_bytes
-                            .try_into()
-                            .or(Err(ReadFromBytesError::BytesArrayTooSmall))?,
-                    );
+                    *self = $int_type::from_ne_bytes(int_bytes.try_into().or(Err(
+                        ReadFromBytesError::BytesArrayTooSmall(self.bytes_size(), bytes.len()),
+                    ))?);
                     return Ok(());
                 }
             }
@@ -58,40 +59,39 @@ derive_frombytes_num!(f32);
 derive_frombytes_num!(f64);
 
 // Implementation for byte arrays
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BytesArray {
     pub bytes: Vec<u8>,
-    pub len: usize,
 }
 
 impl FromBytes for BytesArray {
     fn load_from_bytes(&mut self, bytes: &[u8]) -> ReadFromBytesResult<()> {
         if bytes.len() != self.bytes_size() {
-            return Err(ReadFromBytesError::BytesArrayTooSmall);
-        } else {
-            if self.bytes.capacity() != self.len {
-                self.bytes = Vec::with_capacity(self.len)
-            }
-            self.bytes.copy_from_slice(bytes);
+            self.bytes.resize(bytes.len(), 0);
         }
+        self.bytes.copy_from_slice(bytes);
         Ok(())
     }
 
     fn bytes_size(&self) -> usize {
-        return self.len;
+        return self.bytes.capacity();
     }
 }
 
 // Implementation for strings
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct InlineCString {
     pub contents: String,
-    pub len: usize,
 }
 
 impl FromBytes for InlineCString {
     fn load_from_bytes(&mut self, bytes: &[u8]) -> ReadFromBytesResult<()> {
-        let res = std::ffi::CStr::from_bytes_with_nul(bytes)
+        let end_idx = bytes
+            .iter()
+            .position(|elem| *elem == 0)
+            .map(|end_pos| end_pos + 1)
+            .unwrap_or(bytes.len());
+        let res = std::ffi::CStr::from_bytes_with_nul(&bytes[0..end_idx])
             .map_err(|e| ReadFromBytesError::BytesFormatError(e.to_string()))?;
         self.contents = res
             .to_str()
@@ -101,7 +101,7 @@ impl FromBytes for InlineCString {
     }
 
     fn bytes_size(&self) -> usize {
-        return self.len;
+        return self.contents.len();
     }
 }
 
